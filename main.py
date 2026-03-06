@@ -9,6 +9,7 @@ from langchain_classic.agents import AgentExecutor
 from langchain_classic.agents import create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 import json
+import re
 
 os.environ['GROQ_API_KEY']=os.getenv('GROQ_API_KEY')
 os.environ['LANGCHAIN_API_KEY']=os.getenv('LANGCHAIN_API_KEY')
@@ -132,19 +133,15 @@ def mark_task(query:str) -> str:
     if file_data:
         with open(Task_File,'r') as file:
             json_mark=json.load(file)
-            my_query=query.strip().split(' ')
-            my_key=0
-            for i in my_query:
-                if type(int(i))==int:
-                        my_key=int(i)
-                else:
-                    pass            
-            if my_key==0:
+            matches = re.findall(r'-?\d*\.?\d+',query)
+            my_key = [int(x) for x in matches]
+            if len(my_key)==0:
                 return 'Your tasks are empty'
-        with open(Task_File,'w') as file:
-            json_mark[str(my_key)]['Status']="completed"
-            json.dump(json_mark,file,indent=4)                     
-            return 'Successfully Updated'
+        for i in my_key:
+            with open(Task_File,'w') as file:
+                json_mark[str(i)]['Status']="completed"
+                json.dump(json_mark,file,indent=4)                     
+        return 'Successfully Updated'
     else:
         return 'Your tasks are empty'   
             
@@ -164,7 +161,7 @@ my_prompt="""
            user: remember I have meeting at 2 pm save the note
            Give the information only "meeting at 2 pm" 
            RESULT : NOTE IS SAVED.
-    5. If user asking info about note or show my note than call "retrieve_note" tool.If data ia available than show if empty than reply "your note is empty".
+    5. If user asking info about note or show my note than call "retrieve_note" tool.If data is available than show if empty than reply "your note is empty".
     6. If user wants to add the task to the file than call "add_task" tool and add the task to file and respond "Task added".
     7. IF the User wanted to view or show the tasks than call "view_task" tool.Give the Result in the step by step 
        Ex: 1.TaskName - Status
@@ -183,7 +180,7 @@ tools=[weather_tool,text_summary,save_note,Retrieve_note,add_task,view_task,mark
 
 llm=ChatGroq(
         groq_api_key=os.environ['GROQ_API_KEY'],
-        model="moonshotai/kimi-k2-instruct-0905",
+        model="openai/gpt-oss-20b",
         )
 
 agent=create_openai_tools_agent(llm,tools,prompt)
@@ -191,7 +188,7 @@ agent=create_openai_tools_agent(llm,tools,prompt)
 agent_executor=AgentExecutor(agent=agent,tools=tools,verbose=True)
 
 result=agent_executor.invoke({"query":
-    """ weather at hyderabad   """
+    """ update my tasks 5,6 and 8 is completed  """
 })
 
 print("result:- ", result['output'])

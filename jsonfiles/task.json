@@ -1,14 +1,38 @@
 {
     "1": {
-        "TaskName": "learn agenti ai",
-        "Status": "Pending"
+        "TaskName": "buy chocolates",
+        "Status": "completed"
     },
     "2": {
-        "TaskName": "learn fastapi",
+        "TaskName": "buy shoes",
         "Status": "completed"
     },
     "3": {
-        "TaskName": "learn deep learning",
+        "TaskName": "sell TV",
+        "Status": "completed"
+    },
+    "4": {
+        "TaskName": "sell Laptop",
+        "Status": "completed"
+    },
+    "5": {
+        "TaskName": "learn django",
+        "Status": "completed"
+    },
+    "6": {
+        "TaskName": "learn java",
+        "Status": "completed"
+    },
+    "7": {
+        "TaskName": "learn python",
+        "Status": "completed"
+    },
+    "8": {
+        "TaskName": "learn js",
+        "Status": "completed"
+    },
+    "9": {
+        "TaskName": "learn sql",
         "Status": "completed"
     }
 }
