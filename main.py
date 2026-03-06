@@ -10,6 +10,11 @@ from langchain_classic.agents import create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 import json
 
+os.environ['GROQ_API_KEY']=os.getenv('GROQ_API_KEY')
+os.environ['LANGCHAIN_API_KEY']=os.getenv('LANGCHAIN_API_KEY')
+os.environ['LANGCHAIN_TRACING_V2']="true"
+
+
 weather = OpenWeatherMapAPIWrapper(openweathermap_api_key=os.getenv('OPENWEATHERMAP_API_KEY'))
 
 from pathlib import Path
@@ -34,8 +39,10 @@ def weather_tool(query:str) -> str:
         str: string
     """
     weather_data = weather.run(query)
-    
-    return weather_data
+    try:
+        return weather_data
+    except:
+        return "Temporary issue.Try Again later"
 
 @tool
 def text_summary(query:str) -> str:
@@ -46,6 +53,7 @@ def text_summary(query:str) -> str:
     Returns:
         str : Short Summary Generate 
     """
+    
     return query
 
 @tool
@@ -59,7 +67,6 @@ def save_note(query:str) -> str:
     Returns :
         str : string format
     """
-    
     with open(Note_FILE,'r') as file:
         json_file=json.load(file)
 
@@ -69,13 +76,12 @@ def save_note(query:str) -> str:
     with open(Note_FILE,'w') as file:
         json.dump(json_file,file)
     return 'Note is Saved'
-   
+
 @tool
 def Retrieve_note(query:str) -> str:
     """
       Your are the Retriever tool to get the saves info
-    """
-            
+    """         
     with open(Note_FILE,'r') as file:
         json_file=json.load(file)
 
@@ -91,32 +97,79 @@ def add_task(query:str) -> str:
     """
     Your are the task manager tool
     """
-    index=1
     with open(Task_File,'r') as file:
-        json_file=json.load(file)    
-    data={}
-    for key,value in json_file.items():
-        key={}
-        data[index]=query
-        value=data
-    index+=1  
+        json_file=json.load(file)
+    index=len(json_file)+1
+    json_file[index]={
+        'TaskName':query,
+        "Status":"Pending"
+    } 
     with open(Task_File,'w') as file:
-        json.dump(json_file,file)
+        json.dump(json_file,file,indent=4)
     return 'Task was added'
 
+@tool
+def view_task(query:str) -> str:
+    """
+    Your are the view task tool
+    """
+    with open(Task_File,'r') as file:
+        json_read=json.load(file)
+        if len(json_read)==0:
+            return 'Your Tasks are Empty'
+        else:
+            return json_read
+@tool
+def mark_task(query:str) -> str:
+    """
+    Your are the mark_task tool
+    """
+    def check_data():
+        with open(Task_File,'r') as file:
+            json_read=json.load(file)
+            return json_read
+    file_data=check_data()
+    if file_data:
+        with open(Task_File,'r') as file:
+            json_mark=json.load(file)
+            my_query=query.strip().split(' ')
+            my_key=0
+            for i in my_query:
+                if type(int(i))==int:
+                        my_key=int(i)
+                else:
+                    pass            
+            if my_key==0:
+                return 'Your tasks are empty'
+        with open(Task_File,'w') as file:
+            json_mark[str(my_key)]['Status']="completed"
+            json.dump(json_mark,file,indent=4)                     
+            return 'Successfully Updated'
+    else:
+        return 'Your tasks are empty'   
+            
 my_prompt="""  
      Your are the helpFull AI AGENT.
-     1. IF THE GIVEN QUERY RELATED TO THE WEATHER THAN CALL weather_tool THAN EXECUTE WEATHER IN THE CITY ACCORDINGLY DONT HALUCINATE ANSWERING QUESTION.
-     2. IF THE GIVEN QUERY IS PARAGRAPH ASKING SUMMARY THAN CALL text_summary TOOL AND GIVE SUMMARY OF THE PARAGRAPH DONT HALUCINATE ANSWERING QUESTIONS.
-     3. IF USER WANTED TO add the details in json file than add it.BUT BELOW ARE THE RULES SHOULD MUST FOLLOW.
-        Only add the important text in the user question dont add un-nessesary details to file   
+     BELOW ARE THE STRICT RULES YOU SHOULD FOLLOW.
+    1. ** If user asking mutiple QUESTIONS/QUERYS at a time, DONT BE HALUCINATE,
+    Take step by step for answering the question and take step by step calling the tools and execute.
+    2. If the given query related to the weather in the city than call "weather_tool" than execute weather in city accordingly.
+    EX:What is the weather in Surat?
+    output:Current temperature in Surat is 32°C with clear sky.
+    3. If the given query is paragraph asking summary than call "text_summary" tool and give summary of the paragraph.
+    4. If user wants to add something to note than call "save_note" tool.
+      BUT BELOW ARE THE RULES SHOULD MUST FOLLOW.
+       ** Only add the important text in the user question dont add un-nessesary details to file 
            Ex: 
            user: remember I have meeting at 2 pm save the note
            Give the information only "meeting at 2 pm" 
-           RESULT : NOTE IS SAVED 
-     4. IF USER ASKING ABOUT INFO ABOUT NOTE OR SHOW MY NOTE THEN CALL RETRIEVE_NOTE tool.If data is AVAILABLE THAN SHOW IF empty THEN "your Note is empty"
-     5. If THE USER WANTED TO ADD THE TASK TO THE JSON FILE THAN CALL add_task tool and ADD It to json file as dict object RESPONDE TO THE USER "Task added".
-           
+           RESULT : NOTE IS SAVED.
+    5. If user asking info about note or show my note than call "retrieve_note" tool.If data ia available than show if empty than reply "your note is empty".
+    6. If user wants to add the task to the file than call "add_task" tool and add the task to file and respond "Task added".
+    7. IF the User wanted to view or show the tasks than call "view_task" tool.Give the Result in the step by step 
+       Ex: 1.TaskName - Status
+    8. IF the User Want to update the status of the tasks or mark the status of the tasks than call "mark_task" tool than Update the Status.
+    9. Dont be Halucinate for answering the questions.
     """
 prompt = ChatPromptTemplate.from_messages(
         [
@@ -126,7 +179,7 @@ prompt = ChatPromptTemplate.from_messages(
             MessagesPlaceholder("agent_scratchpad"),
         ]
     )
-tools=[weather_tool,text_summary,save_note,Retrieve_note,add_task]
+tools=[weather_tool,text_summary,save_note,Retrieve_note,add_task,view_task,mark_task]
 
 llm=ChatGroq(
         groq_api_key=os.environ['GROQ_API_KEY'],
@@ -138,7 +191,7 @@ agent=create_openai_tools_agent(llm,tools,prompt)
 agent_executor=AgentExecutor(agent=agent,tools=tools,verbose=True)
 
 result=agent_executor.invoke({"query":
-    """ What was the weather in berlin? """
+    """ weather at hyderabad   """
 })
 
 print("result:- ", result['output'])

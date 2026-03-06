@@ -1,1 +1,14 @@
-{"1": "learn fastapi"}
+{
+    "1": {
+        "TaskName": "learn agenti ai",
+        "Status": "Pending"
+    },
+    "2": {
+        "TaskName": "learn fastapi",
+        "Status": "completed"
+    },
+    "3": {
+        "TaskName": "learn deep learning",
+        "Status": "completed"
+    }
+}

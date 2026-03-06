@@ -1,3 +1,4 @@
 .env
 venv
 my_code.py
+data_file.json
